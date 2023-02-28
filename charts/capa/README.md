@@ -19,7 +19,7 @@ A Helm Chart for the cluster-api-provider-aws infrastructure provider
 | providerArgs.awsControllerIAM.arn | string | `"somearn"` |  |
 | providerArgs.awsControllerIAM.role | string | `"somerole"` |  |
 | providerArgs.bootstrapFormatIgnition | bool | `false` |  |
-| providerArgs.capaLogLevel | string | `"0 - --feature-gates=EKS={{ default true .Values.providerArgs.eks }},EKSEnableIAM={{ default false .Values.providerArgs.eksEnableIAM }},EKSAllowAddRoles={{ default false .Values.providerArgs.EKSAllowAddRoles }},EKSFargate={{ default false .Values.providerArgs.EKSFargate }},MachinePool={{ default false .Values.providerArgs.machinePool }},EventBridgeInstanceState={{ default false .Values.providerArgs.eventBridgeInstanceState }},AutoControllerIdentityCreator={{ default true .Values.providerArgs.autoControllerIdentityCreator }},BootstrapFormatIgnition={{ default false .Values.providerArgs.bootstrapFormatIgnition }},ExternalResourceGC={{ default false .Values.providerArgs.externalResourceGC }} - --v={{ default 0 .Values.providerArgs.capaLogLevel }}"` |  |
+| providerArgs.capaLogLevel | int | `0` |  |
 | providerArgs.eks | bool | `true` |  |
 | providerArgs.eksEnableIAM | bool | `false` |  |
 | providerArgs.eventBridgeInstanceState | bool | `false` |  |
