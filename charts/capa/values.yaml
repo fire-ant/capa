@@ -1,0 +1,31 @@
+controllerManager:
+  manager:
+    env:
+      awsSharedCredentialsFile: /home/.aws/credentials
+    image:
+      repository: registry.k8s.io/cluster-api-aws/cluster-api-aws-controller
+      tag: v2.0.2
+  replicas: 1
+kubernetesClusterDomain: cluster.local
+webhookService:
+  ports:
+  - port: 443
+    targetPort: webhook-server
+  type: ClusterIP
+
+providerArgs:
+  awsControllerIAM: 
+    role: somerole
+    arn: somearn
+  eks: true
+  eksEnableIAM: false
+  EKSAllowAddRoles: false
+  EKSFargate: false
+  machinePool: false
+  eventBridgeInstanceState: false
+  autoControllerIdentityCreator: true
+  bootstrapFormatIgnition: false
+  externalResourceGC: false
+  capaLogLevel: 0
+        - --feature-gates=EKS={{ default true .Values.providerArgs.eks }},EKSEnableIAM={{ default false .Values.providerArgs.eksEnableIAM }},EKSAllowAddRoles={{ default false .Values.providerArgs.EKSAllowAddRoles }},EKSFargate={{ default false .Values.providerArgs.EKSFargate }},MachinePool={{ default false .Values.providerArgs.machinePool }},EventBridgeInstanceState={{ default false .Values.providerArgs.eventBridgeInstanceState }},AutoControllerIdentityCreator={{ default true .Values.providerArgs.autoControllerIdentityCreator }},BootstrapFormatIgnition={{ default false .Values.providerArgs.bootstrapFormatIgnition }},ExternalResourceGC={{ default false .Values.providerArgs.externalResourceGC }}
+        - --v={{ default 0 .Values.providerArgs.capaLogLevel }}

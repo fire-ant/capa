@@ -1,0 +1,108 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "capa.fullname" . }}-controller-manager
+  labels:
+    cluster.x-k8s.io/provider: infrastructure-aws
+    control-plane: controller-manager
+  {{- include "capa.labels" . | nindent 4 }}
+      {{ if ((.Values.providerArgs).awsControllerIAM) }}
+  annotations:
+      eks.amazonaws.com/role-arn:  {{ .Values.providerArgs.awsControllerIAM.arn }}/{{ .Values.providerArgs.awsControllerIAM.role }}
+      {{ end }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "capa.fullname" . }}-controller-manager
+  labels:
+    cluster.x-k8s.io/provider: infrastructure-aws
+    control-plane: capa-controller-manager
+  {{- include "capa.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.controllerManager.replicas }}
+  selector:
+    matchLabels:
+      cluster.x-k8s.io/provider: infrastructure-aws
+      control-plane: capa-controller-manager
+    {{- include "capa.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        cluster.x-k8s.io/provider: infrastructure-aws
+        control-plane: capa-controller-manager
+      {{- include "capa.selectorLabels" . | nindent 8 }}
+      annotations:
+      {{ if ((.Values.providerArgs).awsControllerIAM) }}
+        iam.amazonaws.com/role: {{ .Values.providerArgs.awsControllerIAM.arn }}/{{ .Values.providerArgs.awsControllerIAM.role }}
+      {{ end }}
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: node-role.kubernetes.io/control-plane
+                operator: Exists
+            weight: 10
+          - preference:
+              matchExpressions:
+              - key: node-role.kubernetes.io/master
+                operator: Exists
+            weight: 10
+      containers:
+      - args:
+        - --leader-elect
+        - --feature-gates=EKS={{ default true .Values.providerArgs.eks }},EKSEnableIAM={{ default false .Values.providerArgs.eksEnableIAM }},EKSAllowAddRoles={{ default false .Values.providerArgs.EKSAllowAddRoles }},EKSFargate={{ default false .Values.providerArgs.EKSFargate }},MachinePool={{ default false .Values.providerArgs.machinePool }},EventBridgeInstanceState={{ default false .Values.providerArgs.eventBridgeInstanceState }},AutoControllerIdentityCreator={{ default true .Values.providerArgs.autoControllerIdentityCreator }},BootstrapFormatIgnition={{ default false .Values.providerArgs.bootstrapFormatIgnition }},ExternalResourceGC={{ default false .Values.providerArgs.externalResourceGC }}
+        - --v={{ default 0 .Values.providerArgs.capaLogLevel }}
+        - --metrics-bind-addr=127.0.0.1:8080
+        env:
+        - name: AWS_SHARED_CREDENTIALS_FILE
+          value: {{ .Values.controllerManager.manager.awsSharedCredentialsFile }}
+        - name: KUBERNETES_CLUSTER_DOMAIN
+          value: {{ .Values.kubernetesClusterDomain }}
+        image: {{ .Values.controllerManager.manager.image.repository }}:{{ .Values.controllerManager.manager.image.tag
+          | default .Chart.AppVersion }}
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /healthz
+            port: healthz
+          periodSeconds: 10
+        name: manager
+        ports:
+        - containerPort: 9443
+          name: webhook-server
+          protocol: TCP
+        - containerPort: 9440
+          name: healthz
+          protocol: TCP
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: healthz
+        resources: {}
+        volumeMounts:
+        - mountPath: /tmp/k8s-webhook-server/serving-certs
+          name: cert
+          readOnly: true
+        - mountPath: /home/.aws
+          name: credentials
+      securityContext:
+        fsGroup: 1000
+      serviceAccountName: {{ include "capa.fullname" . }}-controller-manager
+      terminationGracePeriodSeconds: 10
+      tolerations:
+      - effect: NoSchedule
+        key: node-role.kubernetes.io/master
+      - effect: NoSchedule
+        key: node-role.kubernetes.io/control-plane
+      volumes:
+      - name: cert
+        secret:
+          defaultMode: 420
+          secretName: capa-webhook-service-cert
+      - name: credentials
+        secret:
+          secretName: capa-manager-bootstrap-credentials
